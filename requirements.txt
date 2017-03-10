@@ -1,5 +1,4 @@
 pandas
-numba>=0.28
 numpy>=1.11
 thriftpy>=0.3.6
 pytest
