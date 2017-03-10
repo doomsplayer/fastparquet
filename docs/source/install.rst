@@ -7,7 +7,6 @@ Requirements
 Required:
 
 - python 3
-- numba
 - numpy
 - pandas
 - pytest
@@ -33,5 +32,4 @@ or install latest version from github::
 
    pip install git+https://github.com/dask/fastparquet
 
-For the pip methods, numba must have been previously installed (using conda, or from source).
 

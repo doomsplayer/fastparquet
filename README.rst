@@ -37,7 +37,6 @@ Requirements
 
 Required:
 
-- numba
 - numpy
 - pandas
 - cython
@@ -63,8 +62,6 @@ install from pypi::
 or install latest version from github::
 
    pip install git+https://github.com/dask/fastparquet
-
-For the pip methods, numba must have been previously installed (using conda).
 
 Usage
 -----

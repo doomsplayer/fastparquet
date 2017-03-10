@@ -12,7 +12,6 @@ import sys
 import thriftpy
 import warnings
 
-import numba
 
 from thriftpy.protocol.compact import TCompactProtocolFactory
 from thriftpy.protocol.exc import TProtocolException
@@ -118,7 +117,7 @@ def find_type(data, fixed_text=None, object_encoding=None, times='int64'):
                                            None)
         else:
             raise ValueError(
-                    "Parameter times must be [int64|int96], not %s" % times)
+                "Parameter times must be [int64|int96], not %s" % times)
         if hasattr(dtype, 'tz') and str(dtype.tz) != 'UTC':
             warnings.warn('Coercing datetimes to UTC')
     elif dtype.kind == "m":
@@ -127,9 +126,9 @@ def find_type(data, fixed_text=None, object_encoding=None, times='int64'):
     else:
         raise ValueError("Don't know how to convert data type: %s" % dtype)
     se = parquet_thrift.SchemaElement(
-            name=data.name, type_length=width,
-            converted_type=converted_type, type=type,
-            repetition_type=parquet_thrift.FieldRepetitionType.REQUIRED)
+        name=data.name, type_length=width,
+        converted_type=converted_type, type=type,
+        repetition_type=parquet_thrift.FieldRepetitionType.REQUIRED)
     return se, type
 
 
@@ -170,7 +169,7 @@ def convert(data, se):
     elif type == parquet_thrift.Type.INT96 and dtype.kind == 'M':
         ns_per_day = (24 * 3600 * 1000000000)
         day = data.values.view('int64') // ns_per_day + 2440588
-        ns = (data.values.view('int64') % ns_per_day)# - ns_per_day // 2
+        ns = (data.values.view('int64') % ns_per_day)  # - ns_per_day // 2
         out = np.empty(len(data), dtype=[('ns', 'i8'), ('day', 'i4')])
         out['ns'] = ns
         out['day'] = day
@@ -195,7 +194,6 @@ def infer_object_encoding(data):
         raise ValueError("Can't infer object conversion type: %s" % head)
 
 
-@numba.njit(nogil=True)
 def time_shift(indata, outdata, factor=1000):  # pragma: no cover
     for i in range(len(indata)):
         if indata[i] == nat:
@@ -236,8 +234,8 @@ def write_thrift(fobj, thrift):
     if fail:
         raise ParquetException('Thrift parameter validation failure %s'
                                ' when writing: %s-> Field: %s' % (
-            val.args[0], obj, name
-        ))
+                                   val.args[0], obj, name
+                               ))
     return fobj.tell() - t0
 
 
@@ -250,7 +248,6 @@ def encode_plain(data, se):
         return out.tobytes()
 
 
-@numba.njit(nogil=True)
 def encode_unsigned_varint(x, o):  # pragma: no cover
     while x > 127:
         o.write_byte((x & 0x7F) | 0x80)
@@ -258,13 +255,11 @@ def encode_unsigned_varint(x, o):  # pragma: no cover
     o.write_byte(x)
 
 
-@numba.jit(nogil=True)
 def zigzag(n):  # pragma: no cover
     " 32-bit only "
     return (n << 1) ^ (n >> 31)
 
 
-@numba.njit(nogil=True)
 def encode_bitpacked_inv(values, width, o):  # pragma: no cover
     bit = 16 - width
     right_byte_mask = 0b11111111
@@ -281,7 +276,6 @@ def encode_bitpacked_inv(values, width, o):  # pragma: no cover
         o.write_byte((bits & left_byte_mask) >> 8)
 
 
-@numba.njit(nogil=True)
 def encode_bitpacked(values, width, o):  # pragma: no cover
     """
     Write values packed into width-bits each (which can be >8)
@@ -369,6 +363,7 @@ def encode_dict(data, se):
     encode_unsigned_varint(bit_packed_count << 1 | 1, o)  # write run header
     return o.so_far().tostring() + data.values.tostring()
 
+
 encode = {
     'PLAIN': encode_plain,
     'RLE': encode_rle,
@@ -448,8 +443,8 @@ def write_column(f, data, selement, compression=None,
 
     if str(data.dtype) == 'category':
         dph = parquet_thrift.DictionaryPageHeader(
-                num_values=len(data.cat.categories),
-                encoding=parquet_thrift.Encoding.PLAIN)
+            num_values=len(data.cat.categories),
+            encoding=parquet_thrift.Encoding.PLAIN)
         bdata = encode['PLAIN'](pd.Series(data.cat.categories), selement)
         l0 = len(bdata)
         if compression:
@@ -459,9 +454,9 @@ def write_column(f, data, selement, compression=None,
             l1 = l0
         diff += l0 - l1
         ph = parquet_thrift.PageHeader(
-                type=parquet_thrift.PageType.DICTIONARY_PAGE,
-                uncompressed_page_size=l0, compressed_page_size=l1,
-                dictionary_page_header=dph, crc=None)
+            type=parquet_thrift.PageType.DICTIONARY_PAGE,
+            uncompressed_page_size=l0, compressed_page_size=l1,
+            dictionary_page_header=dph, crc=None)
 
         dict_start = f.tell()
         write_thrift(f, ph)
@@ -481,7 +476,7 @@ def write_column(f, data, selement, compression=None,
 
     start = f.tell()
     bdata = definition_data + repetition_data + encode[encoding](
-            data, selement)
+        data, selement)
     try:
         if encoding != 'PLAIN_DICTIONARY' and num_nulls == 0:
             max, min = data.values.max(), data.values.min()
@@ -491,10 +486,10 @@ def write_column(f, data, selement, compression=None,
         pass
 
     dph = parquet_thrift.DataPageHeader(
-            num_values=tot_rows,
-            encoding=getattr(parquet_thrift.Encoding, encoding),
-            definition_level_encoding=parquet_thrift.Encoding.RLE,
-            repetition_level_encoding=parquet_thrift.Encoding.BIT_PACKED)
+        num_values=tot_rows,
+        encoding=getattr(parquet_thrift.Encoding, encoding),
+        definition_level_encoding=parquet_thrift.Encoding.RLE,
+        repetition_level_encoding=parquet_thrift.Encoding.BIT_PACKED)
     l0 = len(bdata)
 
     if compression:
@@ -519,27 +514,27 @@ def write_column(f, data, selement, compression=None,
     s = parquet_thrift.Statistics(max=max, min=min, null_count=num_nulls)
 
     p = [parquet_thrift.PageEncodingStats(
-            page_type=parquet_thrift.PageType.DATA_PAGE,
-            encoding=parquet_thrift.Encoding.PLAIN, count=1)]
+        page_type=parquet_thrift.PageType.DATA_PAGE,
+        encoding=parquet_thrift.Encoding.PLAIN, count=1)]
 
     cmd = parquet_thrift.ColumnMetaData(
-            type=selement.type, path_in_schema=[name],
-            encodings=[parquet_thrift.Encoding.RLE,
-                       parquet_thrift.Encoding.BIT_PACKED,
-                       parquet_thrift.Encoding.PLAIN],
-            codec=(getattr(parquet_thrift.CompressionCodec, compression.upper())
-                   if compression else 0),
-            num_values=tot_rows,
-            statistics=s,
-            data_page_offset=start,
-            encoding_stats=p,
-            key_value_metadata=[],
-            total_uncompressed_size=uncompressed_size,
-            total_compressed_size=compressed_size)
+        type=selement.type, path_in_schema=[name],
+        encodings=[parquet_thrift.Encoding.RLE,
+                   parquet_thrift.Encoding.BIT_PACKED,
+                   parquet_thrift.Encoding.PLAIN],
+        codec=(getattr(parquet_thrift.CompressionCodec, compression.upper())
+               if compression else 0),
+        num_values=tot_rows,
+        statistics=s,
+        data_page_offset=start,
+        encoding_stats=p,
+        key_value_metadata=[],
+        total_uncompressed_size=uncompressed_size,
+        total_compressed_size=compressed_size)
     if cats:
         p.append(parquet_thrift.PageEncodingStats(
-                page_type=parquet_thrift.PageType.DICTIONARY_PAGE,
-                encoding=parquet_thrift.Encoding.PLAIN, count=1))
+            page_type=parquet_thrift.PageType.DICTIONARY_PAGE,
+            encoding=parquet_thrift.Encoding.PLAIN, count=1))
         cmd.dictionary_page_offset = dict_start
     chunk = parquet_thrift.ColumnChunk(file_offset=offset,
                                        meta_data=cmd)
@@ -645,11 +640,11 @@ def write_simple(fn, data, fmd, row_group_offsets, compression,
         if append:
             f.seek(-8, 2)
             head_size = struct.unpack('<i', f.read(4))[0]
-            f.seek(-(head_size+8), 2)
+            f.seek(-(head_size + 8), 2)
         else:
             f.write(MARKER)
         for i, start in enumerate(row_group_offsets):
-            end = (row_group_offsets[i+1] if i < (len(row_group_offsets) - 1)
+            end = (row_group_offsets[i + 1] if i < (len(row_group_offsets) - 1)
                    else None)
             rg = make_row_group(f, data[start:end], fmd.schema,
                                 compression=compression)
@@ -765,7 +760,7 @@ def write(filename, data, row_group_offsets=50000000,
         fn = sep.join([filename, '_metadata'])
         mkdirs(filename)
         for i, start in enumerate(row_group_offsets):
-            end = (row_group_offsets[i+1] if i < (len(row_group_offsets) - 1)
+            end = (row_group_offsets[i + 1] if i < (len(row_group_offsets) - 1)
                    else None)
             part = 'part.%i.parquet' % (i + i_offset)
             if partition_on:

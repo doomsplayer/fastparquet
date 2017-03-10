@@ -14,7 +14,6 @@ import codecs
 import datetime
 import json
 import logging
-import numba
 import numpy as np
 import os
 import pandas as pd
@@ -41,6 +40,7 @@ except ImportError:
     except:
         def unbson(x):
             raise ImportError("BSON not found")
+
         def tobson(x):
             raise ImportError("BSON not found")
 
@@ -179,7 +179,6 @@ def convert(data, se, timestamp96=False):
     return data
 
 
-@numba.njit(nogil=True)
 def time_shift(indata, outdata, factor=1000):  # pragma: no cover
     for i in range(len(indata)):
         if indata[i] == nat:
