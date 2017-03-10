@@ -7,7 +7,6 @@ from __future__ import print_function
 import array
 import io
 import math
-import numba
 import numpy as np
 import os
 import struct
@@ -54,7 +53,6 @@ def read_plain(raw_bytes, type_, count, width=0):
             raise
 
 
-@numba.jit(nogil=True)
 def read_unsigned_var_int(file_obj):  # pragma: no cover
     """Read a value using the unsigned, variable int encoding.
     file-obj is a NumpyIO of bytes; avoids struct to allow numba-jit
@@ -70,7 +68,6 @@ def read_unsigned_var_int(file_obj):  # pragma: no cover
     return result
 
 
-@numba.njit(nogil=True)
 def read_rle(file_obj, header, bit_width, o):  # pragma: no cover
     """Read a run-length encoded run from the given fo with the given header and bit_width.
 
@@ -85,8 +82,6 @@ def read_rle(file_obj, header, bit_width, o):  # pragma: no cover
     value = zero.view(np.int32)
     o.write_many(value, count)
 
-
-@numba.njit(nogil=True)
 def width_from_max_int(value):  # pragma: no cover
     """Convert the value specified to a bit_width."""
     for i in range(0, 64):
@@ -95,13 +90,11 @@ def width_from_max_int(value):  # pragma: no cover
         value >>= 1
 
 
-@numba.njit(nogil=True)
 def _mask_for_bits(i):  # pragma: no cover
     """Generate a mask to grab `i` bits from an int value."""
     return (1 << i) - 1
 
 
-@numba.njit(nogil=True)
 def read_bitpacked(file_obj, header, width, o):  # pragma: no cover
     """
     Read values packed into width-bits each (which can be >8)
@@ -135,7 +128,6 @@ def read_bitpacked(file_obj, header, width, o):  # pragma: no cover
             bits_wnd_l += 8
 
 
-@numba.njit(nogil=True)
 def read_rle_bit_packed_hybrid(io_obj, width, length=None, o=None):  # pragma: no cover
     """Read values from `io_obj` using the rel/bit-packed hybrid encoding.
 
@@ -157,7 +149,6 @@ def read_rle_bit_packed_hybrid(io_obj, width, length=None, o=None):  # pragma: n
     return o.so_far()
 
 
-@numba.njit(nogil=True)
 def read_length(file_obj):  # pragma: no cover
     """ Numpy trick to get a 32-bit length from four bytes
 
@@ -210,7 +201,3 @@ class NumpyIO(object):  # pragma: no cover
         """
         return self.data[:self.loc]
 
-spec8 = [('data', numba.uint8[:]), ('loc', numba.int64), ('len', numba.int64)]
-Numpy8 = numba.jitclass(spec8)(NumpyIO)
-spec32 = [('data', numba.uint32[:]), ('loc', numba.int64), ('len', numba.int64)]
-Numpy32 = numba.jitclass(spec32)(NumpyIO)
