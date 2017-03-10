@@ -20,7 +20,8 @@ from .util import byte_buffer
 def read_plain_boolean(raw_bytes, count):
     """Read `count` booleans using the plain encoding."""
     return np.unpackbits(np.fromstring(raw_bytes, dtype=np.uint8)).reshape(
-            (-1, 8))[:, ::-1].ravel().astype(bool)[:count]
+        (-1, 8))[:, ::-1].ravel().astype(bool)[:count]
+
 
 DECODE_TYPEMAP = {
     parquet_thrift.Type.INT32: np.int32,
@@ -82,6 +83,7 @@ def read_rle(file_obj, header, bit_width, o):  # pragma: no cover
     value = zero.view(np.int32)
     o.write_many(value, count)
 
+
 def width_from_max_int(value):  # pragma: no cover
     """Convert the value specified to a bit_width."""
     for i in range(0, 64):
@@ -139,7 +141,7 @@ def read_rle_bit_packed_hybrid(io_obj, width, length=None, o=None):  # pragma: n
     if length is None:
         length = read_length(io_obj)
     start = io_obj.loc
-    while io_obj.loc-start < length and o.loc < o.len:
+    while io_obj.loc - start < length and o.loc < o.len:
         header = read_unsigned_var_int(io_obj)
         if header & 1 == 0:
             read_rle(io_obj, header, width, o)
@@ -155,7 +157,7 @@ def read_length(file_obj):  # pragma: no cover
     Equivalent to struct.unpack('<i'), but suitable for numba-jit
     """
     sub = file_obj.read(4)
-    return sub[0] + sub[1]*256 + sub[2]*256*256 + sub[3]*256*256*256
+    return sub[0] + sub[1] * 256 + sub[2] * 256 * 256 + sub[3] * 256 * 256 * 256
 
 
 class NumpyIO(object):  # pragma: no cover
@@ -164,6 +166,7 @@ class NumpyIO(object):  # pragma: no cover
 
     This class is numba-jit-able (for specific dtypes)
     """
+
     def __init__(self, data):
         self.data = data
         self.len = data.size
@@ -171,16 +174,16 @@ class NumpyIO(object):  # pragma: no cover
 
     def read(self, x):
         self.loc += x
-        return self.data[self.loc-x:self.loc]
+        return self.data[self.loc - x:self.loc]
 
     def read_byte(self):
         self.loc += 1
-        return self.data[self.loc-1]
+        return self.data[self.loc - 1]
 
     def write(self, d):
         l = len(d)
         self.loc += l
-        self.data[self.loc-l:self.loc] = d
+        self.data[self.loc - l:self.loc] = d
 
     def write_byte(self, b):
         if self.loc >= self.len:
@@ -190,7 +193,7 @@ class NumpyIO(object):  # pragma: no cover
         self.loc += 1
 
     def write_many(self, b, count):
-        self.data[self.loc:self.loc+count] = b
+        self.data[self.loc:self.loc + count] = b
         self.loc += count
 
     def tell(self):
@@ -201,3 +204,6 @@ class NumpyIO(object):  # pragma: no cover
         """
         return self.data[:self.loc]
 
+
+Numpy8 = NumpyIO
+Numpy32 = NumpyIO
